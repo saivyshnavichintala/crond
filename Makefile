@@ -17,3 +17,8 @@ clean:
 
 run: all
 	./$(TARGET)
+
+test:
+	$(CC) $(CFLAGS) tests/test_scheduler.c -o test_scheduler
+	./test_scheduler
+	rm -f test_scheduler
