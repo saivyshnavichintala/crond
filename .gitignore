@@ -1,0 +1,12 @@
+# Compiled files
+*.o
+crond
+
+# Logs
+*.log
+
+# PID files
+*.pid
+
+# Temporary files
+*~
