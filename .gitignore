@@ -10,3 +10,9 @@ crond
 
 # Temporary files
 *~
+
+
+# Test executables
+fifo_test
+pipe_test
+signal_test

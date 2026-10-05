@@ -31,56 +31,131 @@ int start_process(Job *job)
         char *args[64];
         int count = 0;
 
-        strcpy(command_copy, job->command);
+        /*
+         * Create a new process group.
+         * The child becomes the leader.
+         */
+        if (setpgid(0, 0) == -1)
+        {
+            perror("[Child] setpgid");
+            exit(EXIT_FAILURE);
+        }
 
-        char *token = strtok(command_copy, " ");
+        strcpy(
+            command_copy,
+            job->command
+        );
 
-        while (token != NULL && count < 63)
+        char *token =
+            strtok(command_copy, " ");
+
+        while (
+            token != NULL &&
+            count < 63
+        )
         {
             args[count] = token;
+
             count++;
 
-            token = strtok(NULL, " ");
+            token = strtok(
+                NULL,
+                " "
+            );
         }
 
         args[count] = NULL;
 
-        printf("\n[Child] Job ID: %d\n", job->id);
-        printf("[Child] PID: %d\n", getpid());
-        printf("[Child] Executing: %s\n", job->command);
+        printf(
+            "\n[Child] Job ID: %d\n",
+            job->id
+        );
+
+        printf(
+            "[Child] PID: %d\n",
+            getpid()
+        );
+
+        printf(
+            "[Child] Process Group ID: %d\n",
+            getpgrp()
+        );
+
+        printf(
+            "[Child] Executing: %s\n",
+            job->command
+        );
 
         fflush(stdout);
 
         if (count == 0)
         {
-            fprintf(stderr, "[Child] Empty command.\n");
+            fprintf(
+                stderr,
+                "[Child] Empty command.\n"
+            );
+
             exit(EXIT_FAILURE);
         }
 
-        execvp(args[0], args);
+        execvp(
+            args[0],
+            args
+        );
 
-        perror("[Child] execvp");
+        perror(
+            "[Child] execvp"
+        );
 
         exit(EXIT_FAILURE);
     }
 
+    /*
+     * Parent process.
+     */
     job->pid = pid;
+
+    /*
+     * Parent also ensures child process group
+     * is configured.
+     */
+    setpgid(
+        pid,
+        pid
+    );
+
+    job->process_group = pid;
+
     job->state = RUNNING;
 
-    printf("\n[CronD] Job %d started.\n", job->id);
-    printf("[CronD] Child PID: %d\n", job->pid);
+    printf(
+        "\n[CronD] Job %d started.\n",
+        job->id
+    );
+
+    printf(
+        "[CronD] Child PID: %d\n",
+        job->pid
+    );
+
+    printf(
+        "[CronD] Process Group ID: %d\n",
+        job->process_group
+    );
 
     fflush(stdout);
 
-    /*
-     * Wait for the child process to finish.
-     * This keeps the terminal output clean and prevents
-     * the parent menu from accepting input while the
-     * child is executing.
-     */
-    if (waitpid(pid, &status, 0) == -1)
+    if (
+        waitpid(
+            pid,
+            &status,
+            0
+        ) == -1
+    )
     {
-        perror("[CronD] waitpid");
+        perror(
+            "[CronD] waitpid"
+        );
 
         job->state = FAILED;
 
@@ -89,35 +164,36 @@ int start_process(Job *job)
 
     if (WIFEXITED(status))
     {
-        if (WEXITSTATUS(status) == 0)
+        if (
+            WEXITSTATUS(status) == 0
+        )
         {
             job->state = COMPLETED;
 
-            printf("\n[CronD] Job %d completed successfully.\n",
-                   job->id);
+            printf(
+                "\n[CronD] Job %d completed successfully.\n",
+                job->id
+            );
         }
         else
         {
             job->state = FAILED;
 
-            printf("\n[CronD] Job %d failed.\n",
-                   job->id);
+            printf(
+                "\n[CronD] Job %d failed.\n",
+                job->id
+            );
         }
     }
     else if (WIFSIGNALED(status))
     {
         job->state = FAILED;
 
-        printf("\n[CronD] Job %d terminated by signal %d.\n",
-               job->id,
-               WTERMSIG(status));
-    }
-    else
-    {
-        job->state = FAILED;
-
-        printf("\n[CronD] Job %d failed.\n",
-               job->id);
+        printf(
+            "\n[CronD] Job %d terminated by signal %d.\n",
+            job->id,
+            WTERMSIG(status)
+        );
     }
 
     return 0;
@@ -132,33 +208,57 @@ int cancel_process(Job *job)
 
     if (job->state != RUNNING)
     {
-        printf("\nJob %d is not currently running.\n",
-               job->id);
+        printf(
+            "\nJob %d is not currently running.\n",
+            job->id
+        );
 
         return -1;
     }
 
-    if (kill(job->pid, SIGTERM) == -1)
+    /*
+     * Negative PID sends signal to the
+     * entire process group.
+     */
+    if (
+        kill(
+            -job->process_group,
+            SIGTERM
+        ) == -1
+    )
     {
-        perror("[CronD] kill");
+        perror(
+            "[CronD] kill"
+        );
 
         return -1;
     }
 
-    printf("\n[CronD] Termination signal sent to Job %d.\n",
-           job->id);
+    printf(
+        "\n[CronD] SIGTERM sent to Job %d process group.\n",
+        job->id
+    );
 
-    waitpid(job->pid, NULL, 0);
+    waitpid(
+        job->pid,
+        NULL,
+        0
+    );
 
     job->state = CANCELLED;
 
-    printf("[CronD] Job %d cancelled.\n",
-           job->id);
+    printf(
+        "[CronD] Job %d cancelled.\n",
+        job->id
+    );
 
     return 0;
 }
 
-void check_processes(Job jobs[], int job_count)
+void check_processes(
+    Job jobs[],
+    int job_count
+)
 {
     int i;
 
@@ -168,32 +268,42 @@ void check_processes(Job jobs[], int job_count)
         {
             int status;
 
-            pid_t result = waitpid(
-                jobs[i].pid,
-                &status,
-                WNOHANG
-            );
+            pid_t result =
+                waitpid(
+                    jobs[i].pid,
+                    &status,
+                    WNOHANG
+                );
 
             if (result == 0)
             {
-                printf("Job %d is still running.\n",
-                       jobs[i].id);
+                printf(
+                    "Job %d is still running.\n",
+                    jobs[i].id
+                );
             }
-            else if (result == jobs[i].pid)
+            else if (
+                result == jobs[i].pid
+            )
             {
-                if (WIFEXITED(status) &&
-                    WEXITSTATUS(status) == 0)
+                if (
+                    WIFEXITED(status) &&
+                    WEXITSTATUS(status) == 0
+                )
                 {
-                    jobs[i].state = COMPLETED;
+                    jobs[i].state =
+                        COMPLETED;
                 }
                 else
                 {
-                    jobs[i].state = FAILED;
+                    jobs[i].state =
+                        FAILED;
                 }
             }
             else
             {
-                jobs[i].state = FAILED;
+                jobs[i].state =
+                    FAILED;
             }
         }
     }

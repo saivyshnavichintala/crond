@@ -4,21 +4,33 @@ CFLAGS = -Wall -Wextra -Iinclude
 
 TARGET = crond
 
-SOURCES = \
-	src/main.c \
-	src/scheduler.c \
-	src/process.c
+SRC = src/main.c \
+      src/scheduler.c \
+      src/process.c \
+      src/ipc.c
 
-all:
-	$(CC) $(CFLAGS) $(SOURCES) -o $(TARGET)
+OBJ = $(SRC:.c=.o)
+
+all: $(TARGET)
+
+$(TARGET): $(OBJ)
+	$(CC) $(CFLAGS) $(OBJ) -o $(TARGET)
+
+src/%.o: src/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(TARGET)
+	rm -f $(OBJ) $(TARGET)
 
-run: all
-	./$(TARGET)
+pipe_test:
+	$(CC) $(CFLAGS) tests/pipe_test.c -o pipe_test
 
-test:
-	$(CC) $(CFLAGS) tests/test_scheduler.c -o test_scheduler
-	./test_scheduler
-	rm -f test_scheduler
+fifo_test:
+	$(CC) $(CFLAGS) tests/fifo_test.c -o fifo_test
+
+signal_test:
+	$(CC) $(CFLAGS) tests/signal_test.c -o signal_test
+
+tests: pipe_test fifo_test signal_test
+
+.PHONY: all clean tests pipe_test fifo_test signal_test

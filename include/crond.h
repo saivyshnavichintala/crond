@@ -3,12 +3,11 @@
 
 #include <sys/types.h>
 
-#define MAX_JOBS 50
+#define MAX_JOBS 100
 #define MAX_COMMAND_LENGTH 256
 
 typedef enum
 {
-    CREATED,
     SCHEDULED,
     RUNNING,
     COMPLETED,
@@ -19,12 +18,12 @@ typedef enum
 typedef struct
 {
     int id;
-    char command[MAX_COMMAND_LENGTH];
-    int delay;
     pid_t pid;
+    int delay;
     JobState state;
-} Job;
+    char command[MAX_COMMAND_LENGTH];
 
-const char *state_to_string(JobState state);
+    pid_t process_group;
+} Job;
 
 #endif

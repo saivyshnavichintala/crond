@@ -17,6 +17,7 @@ void add_job(Job jobs[], int *job_count, int max_jobs)
 
     job->id = *job_count + 1;
     job->pid = 0;
+    job->process_group = 0;
     job->state = SCHEDULED;
 
     printf("\nEnter delay in seconds: ");
@@ -26,13 +27,21 @@ void add_job(Job jobs[], int *job_count, int max_jobs)
         ;
 
     printf("Enter command: ");
-    fgets(job->command, MAX_COMMAND_LENGTH, stdin);
 
-    job->command[strcspn(job->command, "\n")] = '\0';
+    fgets(
+        job->command,
+        MAX_COMMAND_LENGTH,
+        stdin
+    );
+
+    job->command[
+        strcspn(job->command, "\n")
+    ] = '\0';
 
     (*job_count)++;
 
     printf("\nJob added successfully.\n");
+
     printf("Job ID : %d\n", job->id);
     printf("Delay  : %d seconds\n", job->delay);
     printf("Command: %s\n", job->command);
@@ -49,8 +58,16 @@ void list_jobs(Job jobs[], int job_count)
     }
 
     printf("\n============== Job List ==============\n");
-    printf("%-5s %-10s %-8s %-12s %s\n",
-           "ID", "PID", "DELAY", "STATE", "COMMAND");
+
+    printf(
+        "%-5s %-10s %-8s %-12s %-10s %s\n",
+        "ID",
+        "PID",
+        "DELAY",
+        "STATE",
+        "PGID",
+        "COMMAND"
+    );
 
     for (i = 0; i < job_count; i++)
     {
@@ -82,12 +99,15 @@ void list_jobs(Job jobs[], int job_count)
                 state = "UNKNOWN";
         }
 
-        printf("%-5d %-10d %-8d %-12s %s\n",
-               jobs[i].id,
-               jobs[i].pid,
-               jobs[i].delay,
-               state,
-               jobs[i].command);
+        printf(
+            "%-5d %-10d %-8d %-12s %-10d %s\n",
+            jobs[i].id,
+            jobs[i].pid,
+            jobs[i].delay,
+            state,
+            jobs[i].process_group,
+            jobs[i].command
+        );
     }
 
     printf("=======================================\n");
@@ -103,42 +123,29 @@ void run_job(Job *job)
 
     if (job->state != SCHEDULED)
     {
-        printf("\nJob %d cannot be run.\n", job->id);
-        printf("Current state: ");
-
-        switch (job->state)
-        {
-            case RUNNING:
-                printf("RUNNING\n");
-                break;
-
-            case COMPLETED:
-                printf("COMPLETED\n");
-                break;
-
-            case FAILED:
-                printf("FAILED\n");
-                break;
-
-            case CANCELLED:
-                printf("CANCELLED\n");
-                break;
-
-            default:
-                printf("UNKNOWN\n");
-        }
+        printf(
+            "\nJob %d cannot be run.\n",
+            job->id
+        );
 
         return;
     }
 
-    printf("\n[CronD] Job %d selected.\n", job->id);
+    printf(
+        "\n[CronD] Job %d selected.\n",
+        job->id
+    );
 
-    printf("[CronD] Waiting %d seconds before execution...\n",
-           job->delay);
+    printf(
+        "[CronD] Waiting %d seconds before execution...\n",
+        job->delay
+    );
 
     sleep(job->delay);
 
-    printf("[CronD] Scheduled time reached.\n");
+    printf(
+        "[CronD] Scheduled time reached.\n"
+    );
 
     start_process(job);
 }
